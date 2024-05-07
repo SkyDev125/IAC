@@ -1,13 +1,12 @@
 #
 # IAC 2023/2024 k-means
 # 
-# Grupo:
-# Campus:
+# Grupo: 34
+# Campus: LEIC-T
 #
 # Autores:
-# n_aluno, nome
-# n_aluno, nome
-# n_aluno, nome
+# 110262, Diogo Santos
+# 109480, Joao Conceicao
 #
 # Tecnico/ULisboa
 
@@ -25,8 +24,8 @@
 .data
 
 #Input A - linha inclinada
-#n_points:    .word 9
-#points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
+n_points:    .word 9
+points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
 
 #Input B - Cruz
 #n_points:    .word 5
@@ -37,8 +36,8 @@
 #points: .word 0,0, 0,1, 0,2, 1,0, 1,1, 1,2, 1,3, 2,0, 2,1, 5,3, 6,2, 6,3, 6,4, 7,2, 7,3, 6,8, 6,9, 7,8, 8,7, 8,8, 8,9, 9,7, 9,8
 
 #Input D
-n_points:    .word 30
-points:      .word 16, 1, 17, 2, 18, 6, 20, 3, 21, 1, 17, 4, 21, 7, 16, 4, 21, 6, 19, 6, 4, 24, 6, 24, 8, 23, 6, 26, 6, 26, 6, 23, 8, 25, 7, 26, 7, 20, 4, 21, 4, 10, 2, 10, 3, 11, 2, 12, 4, 13, 4, 9, 4, 9, 3, 8, 0, 10, 4, 10
+#n_points:    .word 30
+#points:      .word 16, 1, 17, 2, 18, 6, 20, 3, 21, 1, 17, 4, 21, 7, 16, 4, 21, 6, 19, 6, 4, 24, 6, 24, 8, 23, 6, 26, 6, 26, 6, 23, 8, 25, 7, 26, 7, 20, 4, 21, 4, 10, 2, 10, 3, 11, 2, 12, 4, 13, 4, 9, 4, 9, 3, 8, 0, 10, 4, 10
 
 
 
@@ -68,7 +67,7 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
 
 
 # Codigo
- 
+
 .text
     # Chama funcao principal da 1a parte do projeto
     jal mainSingleCluster
@@ -105,12 +104,52 @@ printPoint:
     
 
 ### cleanScreen
-# Limpa todos os pontos do ecrã
+# Limpa todos os pontos do ecra
 # Argumentos: nenhum
 # Retorno: nenhum
 
 cleanScreen:
-    # POR IMPLEMENTAR (1a parte)
+
+    # Loads initial values for coordinates, iterators and color.
+    li t0 31 
+    li t1 32 
+    li a2 white
+    j here # Jumps to avoid decrementing x variable in the beginning
+
+    # x variable loop
+    cs_loop_x:
+        addi t0 t0 -1
+        li t1 32 # Resets y variable
+        
+        here:
+            bgez t0 cs_loop_y 
+            j cs_continue
+
+    # y variable loop
+    cs_loop_y:
+        beq t1 x0 cs_loop_x
+        addi t1 t1 -1
+        
+        # Allocates space for sp and stores coordinates
+        addi sp sp -12 
+        sw t0 0(sp)
+        sw t1 4(sp)
+        sw ra 8(sp)
+
+        mv a0 t0
+        mv a1 t1
+
+        jal printPoint
+
+        # Frees space for sp and loads stored coordinates
+        lw t0 0(sp)
+        lw t1 4(sp)
+        lw ra 8(sp)
+        addi sp sp 12
+
+        j cs_loop_y
+
+    cs_continue:
     jr ra
 
     
@@ -120,7 +159,38 @@ cleanScreen:
 # Retorno: nenhum
 
 printClusters:
-    # POR IMPLEMENTAR (1a e 2a parte)
+    # Load vector values
+    lw t0 n_points
+    la t1 points
+    
+    pc_loop:
+        beq t1 x0 pc_continue
+
+            # Save necessary values to stack
+            addi sp sp -12
+            sw ra 8(sp)
+            sw t0 4(sp)
+            sw t1 0(sp)
+
+            # Load point
+            lw a0 0(t1)
+            lw a1 4(t1)
+            lw a2 black
+
+            # Print point
+            jal printPoint
+
+            # Retrieve the values from stack
+            lw ra 8(sp)
+            lw t0 4(sp)
+            lw t1 0(sp)
+            addi sp sp 12
+
+            # Iterate over the vector
+            addi t0 t0 -1
+            addi t1 t1 8
+            j pc_loop
+        pc_continue:
     jr ra
 
 
@@ -132,6 +202,9 @@ printClusters:
 
 printCentroids:
     # POR IMPLEMENTAR (1a e 2a parte)
+    li a2 black
+    
+    
     jr ra
     
 
@@ -153,18 +226,18 @@ calculateCentroids:
 mainSingleCluster:
 
     #1. Coloca k=1 (caso nao esteja a 1)
+    li s0 1
+
+    #2. cleanScreen #J
+    jal cleanScreen
+
+    #3. printClusters #S
+    jal printClusters
+
+    #4. calculateCentroids #J
     # POR IMPLEMENTAR (1a parte)
 
-    #2. cleanScreen
-    # POR IMPLEMENTAR (1a parte)
-
-    #3. printClusters
-    # POR IMPLEMENTAR (1a parte)
-
-    #4. calculateCentroids
-    # POR IMPLEMENTAR (1a parte)
-
-    #5. printCentroids
+    #5. printCentroids #S
     # POR IMPLEMENTAR (1a parte)
 
     #6. Termina
