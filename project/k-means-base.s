@@ -65,11 +65,10 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
 .equ         white      0xffffff
 
 
-
 # Codigo
 
 .text
-    # Chama funcao principal da 1a parte do projeto
+    # Chama funcao principal da 1a partedo projeto
     jal mainSingleCluster
 
     # Descomentar na 2a parte do projeto:
@@ -109,11 +108,9 @@ printPoint:
 # Retorno: nenhum
 
 cleanScreen:
-
     # Loads initial values for coordinates, iterators and color.
     li t0 31 
     li t1 32 
-    li a2 white
     j here # Jumps to avoid decrementing x variable in the beginning
 
     # x variable loop
@@ -138,7 +135,7 @@ cleanScreen:
 
         mv a0 t0
         mv a1 t1
-
+        li a2 white
         jal printPoint
 
         # Frees space for sp and loads stored coordinates
@@ -164,7 +161,7 @@ printClusters:
     la t1 points
     
     pc_loop:
-        beq t1 x0 pc_continue
+        beq t0 x0 pc_continue
 
             # Save necessary values to stack
             addi sp sp -12
@@ -175,7 +172,14 @@ printClusters:
             # Load point
             lw a0 0(t1)
             lw a1 4(t1)
-            lw a2 black
+            
+            # Get color based on K
+            la a2 colors
+            mv t3 s0        # t3 = k
+            addi t3 t3 -1   
+            slli t3 t3 2
+            add a2 a2 t3    # offset (k-1)*4
+            lw a2 0(a2)
 
             # Print point
             jal printPoint
@@ -202,19 +206,77 @@ printClusters:
 
 printCentroids:
     # POR IMPLEMENTAR (1a e 2a parte)
-    li a2 black
-    
-    
+
+    la t3 centroids
+    lw t4 k
+
+    pcen_loop:
+        beqz t4 pcen_continue
+            
+            # Save necessary values to stack
+            addi sp sp -12
+            sw t3 0(sp)
+            sw t4 4(sp) #store k
+            sw ra 8(sp)
+
+            # Load centroid
+            lw a0 0(t3)
+            lw a1 4(t3)
+            li a2 black
+
+            jal printPoint
+
+            # Retrieves the values from stack
+            lw t3 0(sp)
+            lw t4 4(sp)
+            lw ra 8(sp)
+            addi sp sp 12
+
+            # Increment position
+            addi t3, t3, 8
+            addi t4, t4, -1
+
+            j pcen_loop
+    pcen_continue:
+
     jr ra
-    
 
 ### calculateCentroids
 # Calcula os k centroides, a partir da distribuicao atual de pontos associados a cada agrupamento (cluster)
 # Argumentos: nenhum
 # Retorno: nenhum
 
-calculateCentroids:
+calculateCentroids: 
     # POR IMPLEMENTAR (1a e 2a parte)
+    li t0 0     # sum of xs
+    li t1 0     # sum of ys
+    lw t2 k     # centroids vector size
+    lw t3 n_points
+    la t4 centroids
+    la t5 points
+
+    sum:
+        beq t3 x0 cc_continue
+            # Add values
+            lw t6 0(t5)
+            add t0 t0 t6
+            lw t6 4(t5)
+            add t1 t1 t6
+            
+            # Increment position
+            addi t5 t5 8
+            addi t3 t3 -1
+            j sum
+    cc_continue:
+    
+    # Divide by n_points
+    div t0 t0 t3
+    div t1 t1 t3
+
+    # Save the centroid
+    sw t0 0(t4)
+    sw t1 4(t4)
+
     jr ra
 
 
@@ -235,10 +297,10 @@ mainSingleCluster:
     jal printClusters
 
     #4. calculateCentroids #J
-    # POR IMPLEMENTAR (1a parte)
+    jal calculateCentroids
 
     #5. printCentroids #S
-    # POR IMPLEMENTAR (1a parte)
+    jal printCentroids
 
     #6. Termina
     jr ra
@@ -255,8 +317,23 @@ mainSingleCluster:
 
 manhattanDistance:
     # POR IMPLEMENTAR (2a parte)
-    jr ra
+    
+    # Subtract y to x
+    sub t0, a0, a1
+    sub t1, a2, a3
+    
+    # Calculate the absolute value
+    bgez t0 man_continue
+    neg t0 t0
 
+    bgez t1 man_continue
+    neg t1 t1
+    
+    man_continue:
+    # Sum
+    add a0 t3 t2
+    
+    jr ra
 
 ### nearestCluster
 # Determina o centroide mais perto de um dado ponto (x,y).
