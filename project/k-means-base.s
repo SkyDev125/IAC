@@ -109,43 +109,21 @@ printPoint:
 
 cleanScreen:
     # Loads initial values for coordinates, iterators and color.
-    li t0 31 
-    li t1 32 
-    j here # Jumps to avoid decrementing x variable in the beginning
+    li t0 LED_MATRIX_0_WIDTH
+    li t1 LED_MATRIX_0_HEIGHT
+    li t2 white
 
-    # x variable loop
-    cs_loop_x:
-        addi t0 t0 -1
-        li t1 32 # Resets y variable
-        
-        here:
-            bgez t0 cs_loop_y 
-            j cs_continue
+    # Calculate addresses with h*w
+    mul t0 t0 t1
+    la t1 LED_MATRIX_0_BASE
 
-    # y variable loop
-    cs_loop_y:
-        beq t1 x0 cs_loop_x
-        addi t1 t1 -1
-        
-        # Allocates space for sp and stores coordinates
-        addi sp sp -12 
-        sw t0 0(sp)
-        sw t1 4(sp)
-        sw ra 8(sp)
-
-        mv a0 t0
-        mv a1 t1
-        li a2 white
-        jal printPoint
-
-        # Frees space for sp and loads stored coordinates
-        lw t0 0(sp)
-        lw t1 4(sp)
-        lw ra 8(sp)
-        addi sp sp 12
-
-        j cs_loop_y
-
+    # loop through the addresses
+    cs_loop:
+        beq t0 x0 cs_continue
+            sw t2 0(t1)
+            addi t1 t1 4
+            addi t0 t0 -1
+        j cs_loop
     cs_continue:
     jr ra
 
@@ -207,16 +185,16 @@ printClusters:
 printCentroids:
     # POR IMPLEMENTAR (1a e 2a parte)
 
-    la t3 centroids
-    lw t4 k
+    la t0 centroids
+    lw t1 k
 
     pcen_loop:
-        beqz t4 pcen_continue
+        beqz t1 pcen_continue
             
             # Save necessary values to stack
             addi sp sp -12
-            sw t3 0(sp)
-            sw t4 4(sp) #store k
+            sw t0 0(sp)
+            sw t1 4(sp) 
             sw ra 8(sp)
 
             # Load centroid
@@ -227,15 +205,14 @@ printCentroids:
             jal printPoint
 
             # Retrieves the values from stack
-            lw t3 0(sp)
-            lw t4 4(sp)
+            lw t0 0(sp)
+            lw t1 4(sp)
             lw ra 8(sp)
             addi sp sp 12
 
             # Increment position
-            addi t3, t3, 8
-            addi t4, t4, -1
-
+            addi t0, t0, 8
+            addi t1, t1, -1
             j pcen_loop
     pcen_continue:
 
@@ -248,8 +225,8 @@ printCentroids:
 
 calculateCentroids: 
     # POR IMPLEMENTAR (1a e 2a parte)
-    li t0 0     # sum of xs
-    li t1 0     # sum of ys
+    li t0 0     # Acc of Xs
+    li t1 0     # Acc of Ys
     lw t2 k     # centroids vector size
     lw t3 n_points
     la t4 centroids
@@ -257,9 +234,11 @@ calculateCentroids:
 
     sum:
         beq t3 x0 cc_continue
-            # Add values
+            # Sum Xs
             lw t6 0(t5)
             add t0 t0 t6
+            
+            # Sum Ys
             lw t6 4(t5)
             add t1 t1 t6
             
@@ -270,8 +249,9 @@ calculateCentroids:
     cc_continue:
     
     # Divide by n_points
-    div t0 t0 t3
-    div t1 t1 t3
+    lw t3 n_points
+    div t0 t0 t3 # AccX/n_points
+    div t1 t1 t3 # AccY/n_points
 
     # Save the centroid
     sw t0 0(t4)
@@ -290,17 +270,25 @@ mainSingleCluster:
     #1. Coloca k=1 (caso nao esteja a 1)
     li s0 1
 
-    #2. cleanScreen #J
+    # Save ra to stack
+    addi sp sp -4
+    sw ra 0(sp)
+
+    #2. cleanScreen
     jal cleanScreen
 
-    #3. printClusters #S
+    #3. printClusters 
     jal printClusters
 
-    #4. calculateCentroids #J
+    #4. calculateCentroids
     jal calculateCentroids
 
-    #5. printCentroids #S
+    #5. printCentroids
     jal printCentroids
+
+    # Recover ra from stack
+    lw ra 0(sp)
+    addi sp sp 4
 
     #6. Termina
     jr ra
