@@ -52,10 +52,7 @@ k:           .word 1
 
 # Abaixo devem ser declarados o vetor clusters (2a parte) e outras estruturas de dados
 # que o grupo considere necessarias para a solucao:
-#clusters:    
-
-
-
+clusters: .zero 120
 
 #Definicoes de cores a usar no projeto 
 
@@ -77,6 +74,8 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
     #Termina o programa (chamando chamada sistema)
     li a7, 10
     ecall
+    li a7 10
+    call
 
 
 ### printPoint
@@ -133,46 +132,68 @@ cleanScreen:
 # Argumentos: nenhum
 # Retorno: nenhum
 
-printClusters:
-    # Load vector values
+printClusters: #versao segunda parte
+    # Load vector values, k and colors
     lw t0 n_points
-    la t1 points
+    la t1 clusters
+    lw t2 k
+    la t3 colors
     
-    pc_loop:
-        beq t0 x0 pc_continue
+    addi t2 t2 -1 #passar k de 3 para 2
 
-            # Save necessary values to stack
-            addi sp sp -12
-            sw ra 8(sp)
-            sw t0 4(sp)
-            sw t1 0(sp)
+    # Jump to last color
+    slli t4 t2 2
+    add t3 t3 t4
+    
+    pc_k_loop:
+        lw t0 n_points #reseta o iterador
 
-            # Load point
-            lw a0 0(t1)
-            lw a1 4(t1)
+        # Checks if all clusters were searched
+        blt t2 x0 pc_k_continue
+
+        # Goes through the clusters vector checking for points in cluster k
+        pc_loop:
+            beq t0 x0 pc_k_continue 
+
+                # Save necessary values to stack
+                addi sp sp -12
+                sw ra 8(sp)
+                sw t0 4(sp)
+                sw t1 0(sp)
+
+                # Load point
+                lw a0 0(t1)
+                lw a1 4(t1)
+                lw a3 8(t1) 
+
+                # Checks if point is in k cluster
+                bne a3 t2 pc_not_in_cluster
             
-            # Get color based on K
-            la a2 colors
-            mv t3 s0        # t3 = k
-            addi t3 t3 -1   
-            slli t3 t3 2
-            add a2 a2 t3    # offset (k-1)*4
-            lw a2 0(a2)
+                # Get color based on K
+                lw a2 0(t3)
 
-            # Print point
-            jal printPoint
+                # Print point
+                jal printPoint
 
-            # Retrieve the values from stack
-            lw ra 8(sp)
-            lw t0 4(sp)
-            lw t1 0(sp)
-            addi sp sp 12
+                pc_not_in_cluster:
+                
+                # Retrieve the values from stack
+                lw ra 8(sp)
+                lw t0 4(sp)
+                lw t1 0(sp)
+                addi sp sp 12
 
-            # Iterate over the vector
-            addi t0 t0 -1
-            addi t1 t1 8
+                # Iterate over the vector
+                addi t0 t0 -1
+                addi t1 t1 12 # aumenta 12 porque cada ponto passa a ter 3 componentes
             j pc_loop
         pc_continue:
+
+        addi t3 t3 -4 #decrementa o ponteiro no colors
+        addi t2 t2 -1 #diminui o k
+        j pc_k_loop
+    pc_k_continue:
+    
     jr ra
 
 
@@ -183,10 +204,9 @@ printClusters:
 # Retorno: nenhum
 
 printCentroids:
-    # POR IMPLEMENTAR (1a e 2a parte)
-
     la t0 centroids
     lw t1 k
+    li a2 black
 
     pcen_loop:
         beqz t1 pcen_continue
@@ -198,9 +218,8 @@ printCentroids:
             sw ra 8(sp)
 
             # Load centroid
-            lw a0 0(t3)
-            lw a1 4(t3)
-            li a2 black
+            lw a0 0(t0)
+            lw a1 4(t0)
 
             jal printPoint
 
@@ -213,7 +232,7 @@ printCentroids:
             # Increment position
             addi t0, t0, 8
             addi t1, t1, -1
-            j pcen_loop
+        j pcen_loop
     pcen_continue:
 
     jr ra
@@ -245,7 +264,7 @@ calculateCentroids:
             # Increment position
             addi t5 t5 8
             addi t3 t3 -1
-            j sum
+        j sum
     cc_continue:
     
     # Divide by n_points
@@ -268,7 +287,9 @@ calculateCentroids:
 mainSingleCluster:
 
     #1. Coloca k=1 (caso nao esteja a 1)
-    li s0 1
+    la s0 k
+    li s1 1
+    sw s1 0(s0)
 
     # Save ra to stack
     addi sp sp -4
@@ -304,7 +325,6 @@ mainSingleCluster:
 # a0: distance
 
 manhattanDistance:
-    # POR IMPLEMENTAR (2a parte)
     
     # Subtract y to x
     sub t0, a0, a1
@@ -312,14 +332,13 @@ manhattanDistance:
     
     # Calculate the absolute value
     bgez t0 man_continue
-    neg t0 t0
-
+        neg t0 t0
     bgez t1 man_continue
-    neg t1 t1
-    
+        neg t1 t1
     man_continue:
+    
     # Sum
-    add a0 t3 t2
+    add a0 t0 t1
     
     jr ra
 
@@ -332,6 +351,57 @@ manhattanDistance:
 
 nearestCluster:
     # POR IMPLEMENTAR (2a parte)
+    # a0 e a1 -> ponto dado
+    # a2 e a3 -> centroid
+
+    la t0 k
+    la t1 centroids
+    li t3 0 #distance
+    li t4 0 #k index
+    
+    
+    addi t0 t0 -1
+    mv t2 t0
+    slli t2 t2 2
+    add t1 t1 t2 #ponteiro passa para o fim
+
+
+    nc_loop:
+        blt t0 x0 nc_continue
+
+        # Save necessary values to stack
+        addi sp sp -20
+        sw ra 0(sp)
+        sw a0 4(sp)
+        sw a1 8(sp)
+        sw a2 12(sp)
+        sw a3 16(sp)
+
+
+        # Load centroid
+        lw a2 0(t1) 
+        lw a3 4(t1)
+
+        # Calculate Distance
+        jal manhattanDistance
+
+        # Checks if the distance is greater
+        bgt t3 a0 nc_continue_in_loop
+        add t3 a0 x0 #register the new close distance
+        
+
+        nc_continue_in_loop:
+
+        # Retrieve the values from stack
+        lw ra 0(sp)
+        lw a0 4(sp)
+        lw a1 8(sp)
+        lw a2 12(sp)
+        lw a3 16(sp)
+        addi sp sp 20
+    nc_continue:
+    add a0 t0 x0
+    
     jr ra
 
 
@@ -342,4 +412,99 @@ nearestCluster:
 
 mainKMeans:  
     # POR IMPLEMENTAR (2a parte)
+    jr ra
+
+### initializeCentroids
+# Pseudo-Aleatoriamente seleciona pontos para centroids
+# Argumentos: nenhum
+# Retorno: nenhum
+
+initializeCentroids:
+    lw t0 k
+    la t1 centroids
+    
+    ic_loop:
+        beq t0 x0 ic_continue
+            # Save values to stack
+            addi sp sp -12
+            sw ra 0(sp)
+            sw t0 4(sp)
+            sw t1 8(sp)
+            
+            # Generate and Save centroid
+            jal generateCentroid
+            sw a0 0(t1)
+            sw a1 0(t1)
+            
+            # Return values from stack
+            lw ra 0(sp)
+            lw t0 4(sp)
+            lw t1 8(sp)
+            addi sp sp 12
+            
+            # Iterate over the vectors
+            addi t1 t1 8
+            addi t0 t0 -1
+        j ic_loop
+    ic_continue:
+        
+    jr ra
+
+### generateCentroid
+# Randomly selects a centroid
+# Argumentos: nenhum
+# Retorno:
+# a0: x centroid
+# a1: y centroid
+generateCentroid:
+    # Get seed value
+    li a7 30
+    ecall       # a0 = current low time bits
+    mv a1 a0    # a1 = current low time bits
+    
+    # Constants for LCG
+    li a2, 1103515245  # multiplier
+    li a3, 12345       # increment
+    li a4, 2147483648  # modulus (2^31)
+    
+    # Loop values
+    lw t2 n_points
+    la t3 points
+
+    # Sum loop
+    gc_loop:
+        beq t2 x0 gc_continue
+            # Load Xs & Ys
+            lw t0 0(t3)
+            lw t1 4(t3)
+        
+            # LCG algorithm
+            mul a0, a0, a2
+            add a0, a0, a3
+            rem a0, a0, a4
+            mul a1, a1, a2
+            add a1, a1, a3
+            rem a1, a1, a4
+
+            # Sum Xs & Ys
+            add a0 a0 t0
+            sub a1 a1 t1
+            
+            # Iterate the vectors
+            addi t3 t3 8
+            addi t2 t2 -1
+        j gc_loop
+    gc_continue:
+    
+    # Generate final x, y pair
+    li t0 32
+    rem a0 a0 t0
+    rem a1 a1 t0
+    
+    # Get only positive values
+    add a0 a0 t0
+    add a1 a1 t0
+    rem a0 a0 t0
+    rem a1 a1 t0
+    
     jr ra
