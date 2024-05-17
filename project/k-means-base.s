@@ -160,7 +160,6 @@ printClusters:
             addi t1 t1 8
             addi t2 t2 4
             addi t0 t0 -1
-
         j pc_loop
     pc_continue:
     
@@ -178,7 +177,6 @@ printCentroids:
 
     pcen_loop:
         beqz t1 pcen_continue
-            
             # Save necessary values to stack
             addi sp sp -12
             sw t0 0(sp)
@@ -212,7 +210,6 @@ printCentroids:
 # Argumentos: nenhum
 # Retorno: nenhum
 calculateCentroids: 
-    # POR IMPLEMENTAR (1a e 2a parte)
     li t0 0     # Acc of Xs
     li t1 0     # Acc of Ys
     lw t2 k     # centroids vector size
@@ -307,7 +304,6 @@ calculateCentroids:
                 lw ra 0(sp)
                 addi sp sp 4
                 j continue_no_points
-
             # Calculate Centroid
             continue_points:
             div t0 t0 a3
@@ -390,7 +386,6 @@ manhattanDistance:
 # Retorno:
 # a0: cluster index
 nearestCluster:
-    # POR IMPLEMENTAR (2a parte)
     # a0 e a1 -> ponto dado
     # a2 e a3 -> centroid
     la t0 k
