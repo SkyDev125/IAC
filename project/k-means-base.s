@@ -217,33 +217,118 @@ calculateCentroids:
     li t1 0     # Acc of Ys
     lw t2 k     # centroids vector size
     lw t3 n_points
-    la t4 centroids
-    la t5 points
+    la t4 points
+    la t5 clusters
 
-    sum:
-        beq t3 x0 cc_continue
-            # Sum Xs
-            lw t6 0(t5)
-            add t0 t0 t6
+    # Allocate stack size needed for cluster aux values (3 words * k)
+    # 0 -> Acc of Xs
+    # 4 -> Acc of Ys
+    # 8 -> cluster_point_counter
+    clean_stack_loop:
+        beq t2 t0 clean_stack_continue
+            addi sp sp -12
+            sw x0 0(sp)
+            sw x0 4(sp)
+            sw x0 8(sp)    
+            addi t2 t2 -1
+        j clean_stack_loop
+    clean_stack_continue:
+
+    cc_sum_loop:
+        beq t3 x0 cc_sum_continue
+            # Load point & cluster
+            lw a0 0(t4)
+            lw a1 4(t4)
+            lw a2 0(t5)
+
+            # Calculate Stack offset
+            li t6 12
+            mul t6 a2 t6
+            add t6 sp t6
             
-            # Sum Ys
-            lw t6 4(t5)
-            add t1 t1 t6
+            # Load values from stack
+            lw t0 0(t6)
+            lw t1 4(t6)
+            lw a3 8(t6)
+
+            # Add to Accs of Xs & Ys & cluster_point_counter
+            add t0 t0 a0
+            add t1 t1 a1
+            addi a3 a3 1
+
+            # Save values on stack
+            sw t0 0(t6)
+            sw t1 4(t6)
+            sw a3 8(t6)
             
-            # Increment position
-            addi t5 t5 8
+            # Iterate over the vectors
+            addi t5 t5 4
+            addi t4 t4 8
             addi t3 t3 -1
-        j sum
-    cc_continue:
-    
-    # Divide by n_points
-    lw t3 n_points
-    div t0 t0 t3 # AccX/n_points
-    div t1 t1 t3 # AccY/n_points
+        j cc_sum_loop
+    cc_sum_continue:
 
-    # Save the centroid
-    sw t0 0(t4)
-    sw t1 4(t4)
+    # Load values for division
+    lw t2 k
+    la t3 centroids
+
+    # Decrease K for indexing
+    addi t2 t2 -1
+
+    # Go to the end of centroids vector
+    slli t4 t2 3
+    add t3 t3 t4
+
+    cc_div_loop:
+        blt t2 x0 cc_div_continue
+            # Calculate Stack offset
+            li t4 12
+            mul t4 t2 t4
+            add t4 sp t4
+
+            # Load from stack        
+            lw t0 0(t4)
+            lw t1 4(t4)
+            lw a3 8(t4)
+
+            # If there are no points in the cluster
+            bne a3 x0 continue_points
+                # Save to stack
+                addi sp sp -4
+                sw ra 0(sp)
+    
+                jal generateCentroid
+    
+                # Move generated centroid to be saved.
+                mv t0 a0
+                mv t1 a1
+
+                # Return from stack
+                lw ra 0(sp)
+                addi sp sp 4
+                j continue_no_points
+
+            # Calculate Centroid
+            continue_points:
+            div t0 t0 a3
+            div t1 t1 a3
+            
+            # Save the centroid
+            continue_no_points:
+            sw t0 0(t3)
+            sw t1 4(t3)
+
+            # Decrement in centroid
+            addi t3 t3 -8
+            addi t2 t2 -1
+        j cc_div_loop
+    cc_div_continue:
+
+    # De-allocate stack size needed for cluster aux values (3 words * k)
+    lw t2 k
+    li t6 12
+    mul t6 t2 t6
+    add sp sp t6
 
     jr ra
 
@@ -311,50 +396,55 @@ nearestCluster:
     la t0 k
     la t1 centroids
     li t2 0 #distance
-    
-    # Set k to a valid cluster value 0-(k-1)
-    addi t0 t0 -1
-    mv t3 t0
-    slli t3 t3 2
-    add t1 t1 t2 #ponteiro passa para o fim
+    li t3 0 #index
 
+    # Start from the end of the cluster vector, and decrement for index value.
+    addi t0 t0 -1
+    slli t4 t0 3
+    add t1 t1 t4
 
     nc_loop:
         blt t0 x0 nc_continue
+            
+            # Save necessary values
+            addi sp sp -28
+            lw t0 24(sp)
+            lw t1 20(sp)
+            lw t2 16(sp)
+            lw t3 12(sp)
+            lw ra 8(sp)
+            lw a0 4(sp)
+            lw a1 0(sp)
 
-        # Save necessary values to stack
-        addi sp sp -20
-        sw ra 0(sp)
-        sw a0 4(sp)
-        sw a1 8(sp)
-        sw a2 12(sp)
-        sw a3 16(sp)
+            # Load centroid
+            lw a2 0(t1)
+            lw a3 4(t1)
 
+            jal manhattanDistance
 
-        # Load centroid
-        lw a2 0(t1) 
-        lw a3 4(t1)
-
-        # Calculate Distance
-        jal manhattanDistance
-
-        # Checks if the distance is greater
-        bgt t3 a0 nc_continue_in_loop
-        add t3 a0 x0 #register the new close distance
-        
-
-        nc_continue_in_loop:
-
-        # Retrieve the values from stack
-        lw ra 0(sp)
-        lw a0 4(sp)
-        lw a1 8(sp)
-        lw a2 12(sp)
-        lw a3 16(sp)
-        addi sp sp 20
+            # Save new value if smaller
+            blt t2 a0 nc_j_loop
+                mv t2 a0
+                mv t3 t0
+            nc_j_loop:
+            
+            # Retrieves the values from stack
+            lw t0 24(sp)
+            lw t1 20(sp)
+            lw t2 16(sp)
+            lw t3 12(sp)
+            lw ra 8(sp)
+            lw a0 4(sp)
+            lw a1 0(sp)
+            addi sp sp 28
+            
+            # Decrementing
+            addi t1 t1 -8
+            addi t0 t0 -1
+        j nc_loop
     nc_continue:
-    add a0 t0 x0
-    
+
+    mv a0 t3
     jr ra
 
 
