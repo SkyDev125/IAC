@@ -65,13 +65,12 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
 # Codigo
 
 .text
-    # Chama funcao principal da 1a partedo projeto
     jal mainSingleCluster
 
     # Descomentar na 2a parte do projeto:
     #jal mainKMeans
     
-    #Termina o programa (chamando chamada sistema)
+    #Termina o programa
     li a7, 10
     ecall
 
@@ -84,7 +83,6 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
 # a0: x
 # a1: y
 # a2: cor
-
 printPoint:
     li a3, LED_MATRIX_0_HEIGHT
     sub a1, a3, a1
@@ -97,13 +95,12 @@ printPoint:
     add a3, a3, a0   # addr
     sw a2, 0(a3)
     jr ra
-    
+
 
 ### cleanScreen
 # Limpa todos os pontos do ecra
 # Argumentos: nenhum
 # Retorno: nenhum
-
 cleanScreen:
     # Loads initial values for coordinates, iterators and color.
     li t0 LED_MATRIX_0_WIDTH
@@ -124,12 +121,11 @@ cleanScreen:
     cs_continue:
     jr ra
 
-    
+
 ### printClusters
 # Pinta os agrupamentos na LED matrix com a cor correspondente.
 # Argumentos: nenhum
 # Retorno: nenhum
-
 printClusters:
     lw t0 n_points
     la t1 points
@@ -139,7 +135,7 @@ printClusters:
         beq t0 x0 pc_continue
             # Load point
             lw a0 0(t1)
-            lw a1 4(t2)
+            lw a1 4(t1)
 
             # Calculate colour
             lw a2 0(t2)
@@ -176,7 +172,6 @@ printClusters:
 # Nota: deve ser usada a cor preta (black) para todos os centroides
 # Argumentos: nenhum
 # Retorno: nenhum
-
 printCentroids:
     la t0 centroids
     lw t1 k
@@ -211,11 +206,11 @@ printCentroids:
 
     jr ra
 
+
 ### calculateCentroids
 # Calcula os k centroides, a partir da distribuicao atual de pontos associados a cada agrupamento (cluster)
 # Argumentos: nenhum
 # Retorno: nenhum
-
 calculateCentroids: 
     # POR IMPLEMENTAR (1a e 2a parte)
     li t0 0     # Acc of Xs
@@ -257,10 +252,8 @@ calculateCentroids:
 # Funcao principal da 1a parte do projeto.
 # Argumentos: nenhum
 # Retorno: nenhum
-
 mainSingleCluster:
-
-    #1. Coloca k=1 (caso nao esteja a 1)
+    # k = 1
     la s0 k
     li s1 1
     sw s1 0(s0)
@@ -281,7 +274,6 @@ mainSingleCluster:
     jr ra
 
 
-
 ### manhattanDistance
 # Calcula a distancia de Manhattan entre (x0,y0) e (x1,y1)
 # Argumentos:
@@ -289,7 +281,6 @@ mainSingleCluster:
 # a2, a3: x1, y1
 # Retorno:
 # a0: distance
-
 manhattanDistance:
     # Subtract y to x
     sub t0, a0, a1
@@ -302,10 +293,10 @@ manhattanDistance:
         neg t1 t1
     man_continue:
     
-    # Sum
+    # Return distance
     add a0 t0 t1
-    
     jr ra
+
 
 ### nearestCluster
 # Determina o centroide mais perto de um dado ponto (x,y).
@@ -313,21 +304,18 @@ manhattanDistance:
 # a0, a1: (x, y) point
 # Retorno:
 # a0: cluster index
-
 nearestCluster:
     # POR IMPLEMENTAR (2a parte)
     # a0 e a1 -> ponto dado
     # a2 e a3 -> centroid
-
     la t0 k
     la t1 centroids
-    li t3 0 #distance
-    li t4 0 #k index
+    li t2 0 #distance
     
-    
+    # Set k to a valid cluster value 0-(k-1)
     addi t0 t0 -1
-    mv t2 t0
-    slli t2 t2 2
+    mv t3 t0
+    slli t3 t3 2
     add t1 t1 t2 #ponteiro passa para o fim
 
 
@@ -373,17 +361,16 @@ nearestCluster:
 ### mainKMeans
 # Executa o algoritmo *k-means*.
 # Argumentos: nenhum
-# Retorno: nenhum
-
+# Retorno: nenhu
 mainKMeans:  
     # POR IMPLEMENTAR (2a parte)
     jr ra
+
 
 ### initializeCentroids
 # Pseudo-Aleatoriamente seleciona pontos para centroids
 # Argumentos: nenhum
 # Retorno: nenhum
-
 initializeCentroids:
     lw t0 k
     la t1 centroids
@@ -415,13 +402,18 @@ initializeCentroids:
         
     jr ra
 
+
 ### generateCentroid
 # Randomly selects a centroid
+#
+# Design choice: To augment the randomness of the values generated we decided to
+# use the values in the array as an extra seeding factor, inside the loop, and
+# run the LCG algorithm multiple times over. (as we add the values of x and y)
+#
 # Argumentos: nenhum
 # Retorno:
 # a0: x centroid
 # a1: y centroid
-
 generateCentroid:
     # Get seed value
     li a7 30
