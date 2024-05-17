@@ -74,8 +74,6 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
     #Termina o programa (chamando chamada sistema)
     li a7, 10
     ecall
-    li a7 10
-    call
 
 
 ### printPoint
@@ -132,67 +130,43 @@ cleanScreen:
 # Argumentos: nenhum
 # Retorno: nenhum
 
-printClusters: #versao segunda parte
-    # Load vector values, k and colors
+printClusters:
     lw t0 n_points
-    la t1 clusters
-    lw t2 k
-    la t3 colors
-    
-    addi t2 t2 -1 #passar k de 3 para 2
+    la t1 points
+    la t2 clusters
 
-    # Jump to last color
-    slli t4 t2 2
-    add t3 t3 t4
-    
-    pc_k_loop:
-        lw t0 n_points #reseta o iterador
+    pc_loop:
+        beq t0 x0 pc_continue
+            # Load point
+            lw a0 0(t1)
+            lw a1 4(t2)
 
-        # Checks if all clusters were searched
-        blt t2 x0 pc_k_continue
+            # Calculate colour
+            lw a2 0(t2)
+            slli a2 a2 2
 
-        # Goes through the clusters vector checking for points in cluster k
-        pc_loop:
-            beq t0 x0 pc_k_continue 
+            # Load colour
+            la t3 colors
+            add t3 t3 a2
+            lw a2 0(t3)
 
-                # Save necessary values to stack
-                addi sp sp -12
-                sw ra 8(sp)
-                sw t0 4(sp)
-                sw t1 0(sp)
+            # Save to stack
+            addi sp sp -4
+            sw ra 0(sp)
 
-                # Load point
-                lw a0 0(t1)
-                lw a1 4(t1)
-                lw a3 8(t1) 
-
-                # Checks if point is in k cluster
-                bne a3 t2 pc_not_in_cluster
+            jal printPoint
             
-                # Get color based on K
-                lw a2 0(t3)
+            # Return from stack
+            lw ra 0(sp)
+            addi sp sp 4
 
-                # Print point
-                jal printPoint
+            # Iterate over the vector
+            addi t1 t1 8
+            addi t2 t2 4
+            addi t0 t0 -1
 
-                pc_not_in_cluster:
-                
-                # Retrieve the values from stack
-                lw ra 8(sp)
-                lw t0 4(sp)
-                lw t1 0(sp)
-                addi sp sp 12
-
-                # Iterate over the vector
-                addi t0 t0 -1
-                addi t1 t1 12 # aumenta 12 porque cada ponto passa a ter 3 componentes
-            j pc_loop
-        pc_continue:
-
-        addi t3 t3 -4 #decrementa o ponteiro no colors
-        addi t2 t2 -1 #diminui o k
-        j pc_k_loop
-    pc_k_continue:
+        j pc_loop
+    pc_continue:
     
     jr ra
 
@@ -206,7 +180,6 @@ printClusters: #versao segunda parte
 printCentroids:
     la t0 centroids
     lw t1 k
-    li a2 black
 
     pcen_loop:
         beqz t1 pcen_continue
@@ -220,6 +193,7 @@ printCentroids:
             # Load centroid
             lw a0 0(t0)
             lw a1 4(t0)
+            li a2 black
 
             jal printPoint
 
@@ -295,23 +269,15 @@ mainSingleCluster:
     addi sp sp -4
     sw ra 0(sp)
 
-    #2. cleanScreen
     jal cleanScreen
-
-    #3. printClusters 
     jal printClusters
-
-    #4. calculateCentroids
     jal calculateCentroids
-
-    #5. printCentroids
     jal printCentroids
 
     # Recover ra from stack
     lw ra 0(sp)
     addi sp sp 4
 
-    #6. Termina
     jr ra
 
 
@@ -325,7 +291,6 @@ mainSingleCluster:
 # a0: distance
 
 manhattanDistance:
-    
     # Subtract y to x
     sub t0, a0, a1
     sub t1, a2, a3
@@ -456,6 +421,7 @@ initializeCentroids:
 # Retorno:
 # a0: x centroid
 # a1: y centroid
+
 generateCentroid:
     # Get seed value
     li a7 30
