@@ -48,7 +48,7 @@ k:           .word 1
 # Valores de centroids, k e L a usar na 2a parte do prejeto:
 #centroids:   .word 0,0, 10,0, 0,10
 #k:           .word 3
-#L:           .word 10
+L:           .word 10
 
 # Abaixo devem ser declarados o vetor clusters (2a parte) e outras estruturas de dados
 # que o grupo considere necessarias para a solucao:
@@ -465,6 +465,41 @@ mainKMeans:
         
             jal cleanScreen
 
+            # Update clusters
+            lw t1 n_points
+            la t2 points
+            la t3 clusters
+            cluster_update:
+                beq t1 x0 cluster_continue
+                    # Save values to stack
+                    addi sp sp -12
+                    sw t1 0(sp)
+                    sw t2 4(sp)
+                    sw t3 8(sp)
+                    
+                    # Load point
+                    lw a0 0(t2)
+                    lw a1 4(t2)
+
+                    # Find nearest cluster
+                    jal nearestCluster
+                    
+                    # Return values from stack
+                    lw t1 0(sp)
+                    lw t2 4(sp)
+                    lw t3 8(sp)
+                    addi sp sp 12
+
+                    # Update cluster
+                    sw a0 0(t3)
+
+                    # Increment the vectors
+                    addi t3 t3 4
+                    addi t2 t2 8
+                    addi t1 t1 -1
+                j cluster_update
+            cluster_continue:
+
             # Save all centroids in stack
             lw t1 k
             la t2 centroids
@@ -516,57 +551,29 @@ mainKMeans:
                     comp_continue:
                     
                     # Iterate over the vector
-                    addi t2 t2 8
+                    addi t2 t2 -8
                     addi t1 t1 -1
                 j centroid_comp_loop
             centroid_comp_continue:
 
-            # Verify if centroids changed
-            lw t1 k
-            beq a0 t1 mk_continue
-
-            # Update clusters
-            lw t1 n_points
-            la t2 points
-            la t3 clusters
-            cluster_update:
-                beq t1 x0 cluster_continue
-                    # Save values to stack
-                    addi sp sp -12
-                    sw t1 0(sp)
-                    sw t2 4(sp)
-                    sw t3 8(sp)
-                    
-                    # Load point
-                    lw a0 0(t2)
-                    lw a1 4(t2)
-
-                    # Find nearest cluster
-                    jal nearestCluster
-                    
-                    # Return values from stack
-                    lw t1 0(sp)
-                    lw t2 4(sp)
-                    lw t3 8(sp)
-                    addi sp sp 12
-
-                    # Update cluster
-                    sw a0 0(t3)
-
-                    # Increment the vectors
-                    addi t3 t3 4
-                    addi t2 t2 8
-                    addi t1 t1 -1
-                j cluster_update
-            cluster_continue:
-
+            # Save counts for verification later
+            addi sp sp -8
+            sw t1 0(sp)
+            sw a0 4(sp)
+            
             # print
             jal printClusters
             jal printCentroids
             
-            # Return from stack
-            lw t0 0(sp)
-            addi sp sp 4
+            # Return counts for verification & the rest
+            lw t1 0(sp)
+            lw a0 4(sp)
+            lw t0 8(sp)
+            addi sp sp 12
+
+            # Verify if centroids changed
+            lw t1 k
+            beq a0 t1 mk_continue
 
             # Continue iterating
             addi t0 t0 -1
@@ -576,7 +583,7 @@ mainKMeans:
     # Recover ra from stack
     lw ra 0(sp)
     addi sp sp 4
-
+    
     jr ra
 
 
