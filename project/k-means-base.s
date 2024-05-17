@@ -417,7 +417,7 @@ nearestCluster:
 
             jal manhattanDistance
             mv t4 a0 # Save value from return
-
+            
             # Retrieves the values from stack
             lw t0 24(sp)
             lw t1 20(sp)
@@ -462,7 +462,7 @@ mainKMeans:
             # Save to stack
             addi sp sp -4
             sw t0 0(sp)
-
+        
             jal cleanScreen
 
             # Save all centroids in stack
@@ -487,10 +487,6 @@ mainKMeans:
 
             # Update centroids
             jal calculateCentroids
-
-            # Return from stack
-            lw t0 0(sp)
-            addi sp sp 4
 
             # Go to the end of the centroids vector to compare
             lw t1 k
@@ -567,7 +563,7 @@ mainKMeans:
             # print
             jal printClusters
             jal printCentroids
-
+            
             # Return from stack
             lw t0 0(sp)
             addi sp sp 4
