@@ -40,7 +40,6 @@ points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
 #points:      .word 16, 1, 17, 2, 18, 6, 20, 3, 21, 1, 17, 4, 21, 7, 16, 4, 21, 6, 19, 6, 4, 24, 6, 24, 8, 23, 6, 26, 6, 26, 6, 23, 8, 25, 7, 26, 7, 20, 4, 21, 4, 10, 2, 10, 3, 11, 2, 12, 4, 13, 4, 9, 4, 9, 3, 8, 0, 10, 4, 10
 
 
-
 # Valores de centroids e k a usar na 1a parte do projeto:
 centroids:   .word 0,0
 k:           .word 1
@@ -55,7 +54,6 @@ L:           .word 10
 clusters: .zero 120
 
 #Definicoes de cores a usar no projeto 
-
 colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0, 1, 2, etc.
 
 .equ         black      0
@@ -63,7 +61,6 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
 
 
 # Codigo
-
 .text
     jal mainSingleCluster
 
@@ -119,6 +116,7 @@ cleanScreen:
             addi t0 t0 -1
         j cs_loop
     cs_continue:
+
     jr ra
 
 
@@ -156,7 +154,7 @@ printClusters:
             lw ra 0(sp)
             addi sp sp 4
 
-            # Iterate over the vector
+            # Iterate over the vectors
             addi t1 t1 8
             addi t2 t2 4
             addi t0 t0 -1
@@ -304,6 +302,7 @@ calculateCentroids:
                 lw ra 0(sp)
                 addi sp sp 4
                 j continue_no_points
+
             # Calculate Centroid
             continue_points:
             div t0 t0 a3
@@ -314,7 +313,7 @@ calculateCentroids:
             sw t0 0(t3)
             sw t1 4(t3)
 
-            # Decrement in centroid
+            # Iterate over centroids vector
             addi t3 t3 -8
             addi t2 t2 -1
         j cc_div_loop
@@ -363,7 +362,7 @@ mainSingleCluster:
 # Retorno:
 # a0: distance
 manhattanDistance:
-    # Subtract y to x
+    # Subtract Xs and Ys
     sub t0, a0, a2
     sub t1, a1, a3
     
@@ -387,15 +386,15 @@ manhattanDistance:
 # Retorno:
 # a0: cluster index
 nearestCluster:
-    # a0 e a1 -> ponto dado
-    # a2 e a3 -> centroid
     lw t0 k
     la t1 centroids
     li t2 0x0fffffff #distance
     li t3 0 #index
 
-    # Start from the end of the cluster vector, and decrement for index value.
+    # Decrement for index value.
     addi t0 t0 -1
+    
+    # Start from the end of the cluster vector 
     slli t4 t0 3
     add t1 t1 t4
     nc_loop:
@@ -434,12 +433,13 @@ nearestCluster:
                 mv t3 t0
             nc_j_loop:
             
-            # Decrementing
+            # Iterating over the vector
             addi t1 t1 -8
             addi t0 t0 -1
         j nc_loop
     nc_continue:
 
+    # Return Value
     mv a0 t3
     jr ra
 
