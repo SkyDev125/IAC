@@ -364,15 +364,16 @@ mainSingleCluster:
 # a0: distance
 manhattanDistance:
     # Subtract y to x
-    sub t0, a0, a1
-    sub t1, a2, a3
+    sub t0, a0, a2
+    sub t1, a1, a3
     
     # Calculate the absolute value
-    bgez t0 man_continue
-        neg t0 t0
-    bgez t1 man_continue
-        neg t1 t1
-    man_continue:
+    bge t0, x0, t0_continue
+        neg t0, t0
+    t0_continue:
+    bge t1, x0, t1_continue
+        neg t1, t1
+    t1_continue:
     
     # Return distance
     add a0 t0 t1
@@ -388,41 +389,35 @@ manhattanDistance:
 nearestCluster:
     # a0 e a1 -> ponto dado
     # a2 e a3 -> centroid
-    la t0 k
+    lw t0 k
     la t1 centroids
-    li t2 0 #distance
+    li t2 0x0fffffff #distance
     li t3 0 #index
 
     # Start from the end of the cluster vector, and decrement for index value.
     addi t0 t0 -1
     slli t4 t0 3
     add t1 t1 t4
-
     nc_loop:
         blt t0 x0 nc_continue
             
             # Save necessary values
             addi sp sp -28
-            lw t0 24(sp)
-            lw t1 20(sp)
-            lw t2 16(sp)
-            lw t3 12(sp)
-            lw ra 8(sp)
-            lw a0 4(sp)
-            lw a1 0(sp)
+            sw t0 24(sp)
+            sw t1 20(sp)
+            sw t2 16(sp)
+            sw t3 12(sp)
+            sw ra 8(sp)
+            sw a0 4(sp)
+            sw a1 0(sp)
 
             # Load centroid
             lw a2 0(t1)
             lw a3 4(t1)
 
             jal manhattanDistance
+            mv t4 a0 # Save value from return
 
-            # Save new value if smaller
-            blt t2 a0 nc_j_loop
-                mv t2 a0
-                mv t3 t0
-            nc_j_loop:
-            
             # Retrieves the values from stack
             lw t0 24(sp)
             lw t1 20(sp)
@@ -432,6 +427,12 @@ nearestCluster:
             lw a0 4(sp)
             lw a1 0(sp)
             addi sp sp 28
+
+            # Save new value if smaller
+            blt t2 t4 nc_j_loop
+                mv t2 t4
+                mv t3 t0
+            nc_j_loop:
             
             # Decrementing
             addi t1 t1 -8
@@ -448,7 +449,138 @@ nearestCluster:
 # Argumentos: nenhum
 # Retorno: nenhu
 mainKMeans:  
-    # POR IMPLEMENTAR (2a parte)
+    # Save ra to stack
+    addi sp sp -4
+    sw ra 0(sp)
+
+    # Load loop necessary stuff
+    lw t0 L
+
+    # main loop
+    mk_loop:
+        beq t0 x0 mk_continue
+            # Save to stack
+            addi sp sp -4
+            sw t0 0(sp)
+
+            jal cleanScreen
+
+            # Save all centroids in stack
+            lw t1 k
+            la t2 centroids
+            centroid_loop:
+                beq t1 x0 centroid_continue
+                    # Load centroid
+                    lw t3 0(t2) # X
+                    lw t4 4(t2) # Y
+
+                    # Save to stack
+                    addi sp sp -8
+                    sw t3 0(sp) # X
+                    sw t4 4(sp) # Y
+
+                    # Iterate over the vector
+                    addi t1 t1 -1
+                    addi t2 t2 8
+                j centroid_loop
+            centroid_continue:
+
+            # Update centroids
+            jal calculateCentroids
+
+            # Return from stack
+            lw t0 0(sp)
+            addi sp sp 4
+
+            # Go to the end of the centroids vector to compare
+            lw t1 k
+            la t2 centroids
+            addi t1 t1 -1
+            slli t1 t1 3
+            add t2 t2 t1
+            
+            # Start the comparison loop
+            lw t1 k
+            li a0 0 # Comparison checker
+            centroid_comp_loop:
+                beq t1 x0 centroid_comp_continue
+                    # Load centroid
+                    lw t3 0(t2) # X
+                    lw t4 4(t2) # Y
+
+                    # Load old centroid from stack
+                    lw t5 0(sp) # X
+                    lw t6 4(sp) # Y
+                    addi sp sp 8
+
+                    # Count the differences
+                    bne t3 t5 comp_continue
+                    bne t4 t6 comp_continue
+                        addi a0 a0 1
+                    comp_continue:
+                    
+                    # Iterate over the vector
+                    addi t2 t2 8
+                    addi t1 t1 -1
+                j centroid_comp_loop
+            centroid_comp_continue:
+
+            # Verify if centroids changed
+            lw t1 k
+            beq a0 t1 mk_continue
+
+            # Update clusters
+            lw t1 n_points
+            la t2 points
+            la t3 clusters
+            cluster_update:
+                beq t1 x0 cluster_continue
+                    # Save values to stack
+                    addi sp sp -12
+                    sw t1 0(sp)
+                    sw t2 4(sp)
+                    sw t3 8(sp)
+                    
+                    # Load point
+                    lw a0 0(t2)
+                    lw a1 4(t2)
+
+                    # Find nearest cluster
+                    jal nearestCluster
+                    
+                    # Return values from stack
+                    lw t1 0(sp)
+                    lw t2 4(sp)
+                    lw t3 8(sp)
+                    addi sp sp 12
+
+                    # Update cluster
+                    sw a0 0(t3)
+
+                    # Increment the vectors
+                    addi t3 t3 4
+                    addi t2 t2 8
+                    addi t1 t1 -1
+                j cluster_update
+            cluster_continue:
+
+            # print
+            jal printClusters
+            jal printCentroids
+
+            # Return from stack
+            lw t0 0(sp)
+            addi sp sp 4
+
+            # Continue iterating
+            addi t0 t0 -1
+        j mk_loop
+    mk_continue:
+
+    # Recover ra from stack
+    lw ra 0(sp)
+    addi sp sp 4
+
     jr ra
 
 
