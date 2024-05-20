@@ -289,18 +289,23 @@ calculateCentroids:
             # If there are no points in the cluster
             bne a3 x0 continue_points
                 # Save to stack
-                addi sp sp -4
-                sw ra 0(sp)
+                #addi sp sp -12
+                #sw t3 8(sp)
+                #sw t2 4(sp)
+                #sw ra 0(sp)
     
-                jal generateCentroid
+                #jal generateCentroid
     
                 # Move generated centroid to be saved.
-                mv t0 a0
-                mv t1 a1
+                #mv t0 a0
+                #mv t1 a1
 
                 # Return from stack
-                lw ra 0(sp)
-                addi sp sp 4
+                #lw t3 8(sp)
+                #lw t2 4(sp)
+                #lw ra 0(sp)
+                #addi sp sp 12
+                
                 j continue_no_points
 
             # Calculate Centroid
@@ -309,11 +314,11 @@ calculateCentroids:
             div t1 t1 a3
             
             # Save the centroid
-            continue_no_points:
             sw t0 0(t3)
             sw t1 4(t3)
 
             # Iterate over centroids vector
+            continue_no_points:
             addi t3 t3 -8
             addi t2 t2 -1
         j cc_div_loop
@@ -428,7 +433,7 @@ nearestCluster:
             addi sp sp 28
 
             # Save new value if smaller
-            blt t2 t4 nc_j_loop
+            bge t4 t2 nc_j_loop
                 mv t2 t4
                 mv t3 t0
             nc_j_loop:
@@ -544,7 +549,7 @@ mainKMeans:
                     lw t6 4(sp) # Y
                     addi sp sp 8
 
-                    # Count the differences
+                    # Count the equals
                     bne t3 t5 comp_continue
                     bne t4 t6 comp_continue
                         addi a0 a0 1
