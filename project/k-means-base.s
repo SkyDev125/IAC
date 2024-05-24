@@ -96,6 +96,17 @@ printPoint:
 
 ### cleanScreen
 # Limpa todos os pontos do ecra
+#
+# Design: We started by implementing this innitially by using the printPoint function
+# on each possible combination from 0,0 to 31,31. However after researching some better
+# solutions, we came to simply using the memory addresses which follow a consecutive allocation,
+# hence accelerating the cleaning of the screen.
+#
+# We also thought optimizing this further, would yield varying results based on the ammount 
+# of data in the algorithm, if we have few points, keeping track of what was printed, and then
+# clearing it, would usually be more efficient, but as the ammount of points grow, the current
+# optimization is effectively faster. 
+#
 # Argumentos: nenhum
 # Retorno: nenhum
 cleanScreen:
@@ -204,7 +215,17 @@ printCentroids:
 
 
 ### calculateCentroids
-# Calcula os k centroides, a partir da distribuicao atual de pontos associados a cada agrupamento (cluster)
+# Calcula os k centroides, a partir da distribuicao atual de pontos associados 
+# a cada agrupamento (cluster)
+#
+# Design: We decided to take a different approach to calculate the centroids, as we wanted
+# this to work for any N centroids, so we allocate the space neeeded for the calculation
+# of each centroid in the stack, and then proceed to execute the operations necessary. Allowing
+# our code to be flexible and efficient, instead of running through the points vector n*K times
+#
+# Based on the comparisons we made, in most situations, this seems to be the most effective way
+# to attain such objective, where only very small K (ex: K = 1, 2) values surpass our implementation.
+#
 # Argumentos: nenhum
 # Retorno: nenhum
 calculateCentroids: 
@@ -288,23 +309,6 @@ calculateCentroids:
 
             # If there are no points in the cluster
             bne a3 x0 continue_points
-                # Save to stack
-                #addi sp sp -12
-                #sw t3 8(sp)
-                #sw t2 4(sp)
-                #sw ra 0(sp)
-    
-                #jal generateCentroid
-    
-                # Move generated centroid to be saved.
-                #mv t0 a0
-                #mv t1 a1
-
-                # Return from stack
-                #lw t3 8(sp)
-                #lw t2 4(sp)
-                #lw ra 0(sp)
-                #addi sp sp 12
                 
                 j continue_no_points
 
@@ -393,7 +397,7 @@ manhattanDistance:
 nearestCluster:
     lw t0 k
     la t1 centroids
-    li t2 0x0fffffff #distance
+    li t2 0x0fffffff #distance (Set to max int for first comparison)
     li t3 0 #index
 
     # Decrement for index value.
@@ -457,6 +461,9 @@ mainKMeans:
     # Save ra to stack
     addi sp sp -4
     sw ra 0(sp)
+
+    # Initialize Centroids
+    jal initializeCentroids
 
     # Load loop necessary stuff
     lw t0 L
@@ -526,6 +533,8 @@ mainKMeans:
             centroid_continue:
 
             # Update centroids
+            jal printClusters
+            jal printCentroids
             jal calculateCentroids
 
             # Go to the end of the centroids vector to compare
@@ -566,11 +575,7 @@ mainKMeans:
             sw t1 0(sp)
             sw a0 4(sp)
             
-            # print
-            jal printClusters
-            jal printCentroids
-            
-            # Return counts for verification & the rest
+            # Recover counts for verification & L
             lw t1 0(sp)
             lw a0 4(sp)
             lw t0 8(sp)
@@ -610,14 +615,16 @@ initializeCentroids:
             
             # Generate and Save centroid
             jal generateCentroid
-            sw a0 0(t1)
-            sw a1 0(t1)
             
             # Return values from stack
             lw ra 0(sp)
             lw t0 4(sp)
             lw t1 8(sp)
             addi sp sp 12
+            
+            # Save Centroid
+            sw a0 0(t1)
+            sw a1 4(t1)
             
             # Iterate over the vectors
             addi t1 t1 8
@@ -631,9 +638,11 @@ initializeCentroids:
 ### generateCentroid
 # Randomly selects a centroid
 #
-# Design choice: To augment the randomness of the values generated we decided to
-# use the values in the array as an extra seeding factor, inside the loop, and
-# run the LCG algorithm multiple times over. (as we add the values of x and y)
+# Design: We started by using the points given to help generate the seed for the algorithm
+# however, it seemed to not be random enough, and less efficient. So we changed to a more standard
+# approach which seemed to provide better results.
+#
+# https://en.wikipedia.org/wiki/Linear_congruential_generator
 #
 # Argumentos: nenhum
 # Retorno:
@@ -645,39 +654,29 @@ generateCentroid:
     ecall       # a0 = current low time bits
     mv a1 a0    # a1 = current low time bits
     
-    # Constants for LCG
+    # Constants for LCG for x coordinate
     li a2, 1103515245  # multiplier
     li a3, 12345       # increment
     li a4, 2147483648  # modulus (2^31)
+
+    # LCG algorithm for x coordinate
+    mul a0, a0, a2
+    add a0, a0, a3
+    rem a0, a0, a4
+
+    # Constants for LCG for y coordinate
+    li a2, 134775813  # different multiplier
+    li a3, 1          # different increment
+    li a4, 2147483648  # same modulus (2^31)
+
+    # LCG algorithm for y coordinate
+    mul a1, a1, a2
+    add a1, a1, a3
+    rem a1, a1, a4
     
-    # Loop values
-    lw t2 n_points
-    la t3 points
-
-    # Sum loop
-    gc_loop:
-        beq t2 x0 gc_continue
-            # Load Xs & Ys
-            lw t0 0(t3)
-            lw t1 4(t3)
-        
-            # LCG algorithm
-            mul a0, a0, a2
-            add a0, a0, a3
-            rem a0, a0, a4
-            mul a1, a1, a2
-            add a1, a1, a3
-            rem a1, a1, a4
-
-            # Sum Xs & Ys
-            add a0 a0 t0
-            sub a1 a1 t1
-            
-            # Iterate the vectors
-            addi t3 t3 8
-            addi t2 t2 -1
-        j gc_loop
-    gc_continue:
+    # Discard lower 16 bits
+    srai a0, a0, 16
+    srai a1, a1, 16
     
     # Generate final x, y pair
     li t0 32
