@@ -97,15 +97,14 @@ printPoint:
 ### cleanScreen
 # Limpa todos os pontos do ecra
 #
-# Design: We started by implementing this innitially by using the printPoint function
-# on each possible combination from 0,0 to 31,31. However after researching some better
-# solutions, we came to simply using the memory addresses which follow a consecutive allocation,
-# hence accelerating the cleaning of the screen.
+#OPTIMIZATION
 #
-# We also thought optimizing this further, would yield varying results based on the ammount 
-# of data in the algorithm, if we have few points, keeping track of what was printed, and then
-# clearing it, would usually be more efficient, but as the ammount of points grow, the current
-# optimization is effectively faster. 
+# We optimized our initial design, which printed each point from 
+# 0,0 to 31,31 using the printPoint Function, to using consecutive memory addresses 
+# for faster screen cleaning. 
+#
+# We considered further optimization by tracking printed points for efficient clearing, 
+# but found our current method faster for larger data sets.
 #
 # Argumentos: nenhum
 # Retorno: nenhum
@@ -218,13 +217,12 @@ printCentroids:
 # Calcula os k centroides, a partir da distribuicao atual de pontos associados 
 # a cada agrupamento (cluster)
 #
-# Design: We decided to take a different approach to calculate the centroids, as we wanted
-# this to work for any N centroids, so we allocate the space neeeded for the calculation
-# of each centroid in the stack, and then proceed to execute the operations necessary. Allowing
-# our code to be flexible and efficient, instead of running through the points vector n*K times
+#OPTIMIZATION
 #
-# Based on the comparisons we made, in most situations, this seems to be the most effective way
-# to attain such objective, where only very small K (ex: K = 1, 2) values surpass our implementation.
+# We optimized our k-means algorithm by dynamically allocating space for each centroid
+# calculation on the stack. This allows our code to be flexible and efficient,
+# running through the points vector only once, instead of n*K times. This approach is
+# most effective except for very small K values.
 #
 # Argumentos: nenhum
 # Retorno: nenhum
@@ -569,17 +567,10 @@ mainKMeans:
                     addi t1 t1 -1
                 j centroid_comp_loop
             centroid_comp_continue:
-
-            # Save counts for verification later
-            addi sp sp -8
-            sw t1 0(sp)
-            sw a0 4(sp)
             
-            # Recover counts for verification & L
-            lw t1 0(sp)
-            lw a0 4(sp)
-            lw t0 8(sp)
-            addi sp sp 12
+            # Return from Stack
+            lw t0 0(sp)
+            addi sp sp 4
 
             # Verify if centroids changed
             lw t1 k
@@ -639,8 +630,8 @@ initializeCentroids:
 # Randomly selects a centroid
 #
 # Design: We started by using the points given to help generate the seed for the algorithm
-# however, it seemed to not be random enough, and less efficient. So we changed to a more standard
-# approach which seemed to provide better results.
+# however, it seemed to not be random enough, and less efficient. So we changed to a more 
+# standard approach which seemed to provide better results.
 #
 # https://en.wikipedia.org/wiki/Linear_congruential_generator
 #
