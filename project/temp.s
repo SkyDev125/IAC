@@ -24,16 +24,16 @@
 .data
 
 #Input A - linha inclinada
-#n_points:    .word 9
-#points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
+n_points:    .word 9
+points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
 
 #Input B - Cruz
 #n_points:    .word 5
 #points:     .word 4,2, 5,1, 5,2, 5,3 6,2
 
 #Input C
-n_points:    .word 23
-points: .word 0,0, 0,1, 0,2, 1,0, 1,1, 1,2, 1,3, 2,0, 2,1, 5,3, 6,2, 6,3, 6,4, 7,2, 7,3, 6,8, 6,9, 7,8, 8,7, 8,8, 8,9, 9,7, 9,8
+#n_points:    .word 23
+#points: .word 0,0, 0,1, 0,2, 1,0, 1,1, 1,2, 1,3, 2,0, 2,1, 5,3, 6,2, 6,3, 6,4, 7,2, 7,3, 6,8, 6,9, 7,8, 8,7, 8,8, 8,9, 9,7, 9,8
 
 #Input D
 #n_points:    .word 30
@@ -41,12 +41,12 @@ points: .word 0,0, 0,1, 0,2, 1,0, 1,1, 1,2, 1,3, 2,0, 2,1, 5,3, 6,2, 6,3, 6,4, 7
 
 
 # Valores de centroids e k a usar na 1a parte do projeto:
-#centroids:   .word 0,0
-#k:           .word 1
+centroids:   .word 0,0
+k:           .word 1
 
 # Valores de centroids, k e L a usar na 2a parte do prejeto:
-centroids:   .word 0,0, 10,0, 0,10
-k:           .word 3
+#centroids:   .word 0,0, 10,0, 0,10
+#k:           .word 3
 L:           .word 10
 
 # Abaixo devem ser declarados o vetor clusters (2a parte) e outras estruturas de dados
@@ -62,10 +62,10 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  # Cores dos pontos do cluster 0
 
 # Codigo
 .text
-    #jal mainSingleCluster
+    jal mainSingleCluster
 
     # Descomentar na 2a parte do projeto:
-    jal mainKMeans
+    #jal mainKMeans
     
     #Termina o programa
     li a7, 10
@@ -114,11 +114,11 @@ cleanScreen:
     li t1 LED_MATRIX_0_HEIGHT
     li t2 white
 
-    # Calculate addresses with h*w
+    # Calculate addresses with height*width
     mul t0 t0 t1
     la t1 LED_MATRIX_0_BASE
 
-    # loop through the addresses
+    # loop through the addresses and clean
     cs_loop:
         beq t0 x0 cs_continue
             sw t2 0(t1)
@@ -313,7 +313,6 @@ calculateCentroids:
 
             # If there are no points in the cluster
             bne a3 x0 continue_points
-                
                 j continue_no_points
 
             # Calculate Centroid
@@ -542,7 +541,7 @@ mainKMeans:
                 j centroid_loop
             centroid_continue:
 
-            # Update centroids
+            # Print & Calculate centroids
             jal printClusters
             jal printCentroids
             jal calculateCentroids
@@ -556,7 +555,7 @@ mainKMeans:
             
             # Start the comparison loop
             lw t1 k
-            li a0 0 # Comparison checker
+            li a0 0 # Comparison counter
             centroid_comp_loop:
                 beq t1 x0 centroid_comp_continue
                     # Load centroid
@@ -579,14 +578,14 @@ mainKMeans:
                     addi t1 t1 -1
                 j centroid_comp_loop
             centroid_comp_continue:
-            
-            # Return from Stack
-            lw t0 0(sp)
-            addi sp sp 4
-
+        
             # Verify if centroids changed
             lw t1 k
             beq a0 t1 mk_continue
+
+            # Return from Stack
+            lw t0 0(sp)
+            addi sp sp 4
 
             # Continue iterating
             addi t0 t0 -1
