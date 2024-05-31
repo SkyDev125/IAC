@@ -114,11 +114,11 @@ cleanScreen:
     li t1 LED_MATRIX_0_HEIGHT
     li t2 white
 
-    # Calculate addresses with h*w
+    # Calculate addresses with height*width
     mul t0 t0 t1
     la t1 LED_MATRIX_0_BASE
 
-    # loop through the addresses
+    # loop through the addresses and clean
     cs_loop:
         beq t0 x0 cs_continue
             sw t2 0(t1)
@@ -313,7 +313,6 @@ calculateCentroids:
 
             # If there are no points in the cluster
             bne a3 x0 continue_points
-                
                 j continue_no_points
 
             # Calculate Centroid
@@ -542,7 +541,7 @@ mainKMeans:
                 j centroid_loop
             centroid_continue:
 
-            # Update centroids
+            # Print & Calculate centroids
             jal printClusters
             jal printCentroids
             jal calculateCentroids
@@ -556,7 +555,7 @@ mainKMeans:
             
             # Start the comparison loop
             lw t1 k
-            li a0 0 # Comparison checker
+            li a0 0 # Comparison counter
             centroid_comp_loop:
                 beq t1 x0 centroid_comp_continue
                     # Load centroid
@@ -579,14 +578,14 @@ mainKMeans:
                     addi t1 t1 -1
                 j centroid_comp_loop
             centroid_comp_continue:
-            
-            # Return from Stack
-            lw t0 0(sp)
-            addi sp sp 4
 
             # Verify if centroids changed
             lw t1 k
             beq a0 t1 mk_continue
+
+            # Return from Stack
+            lw t0 0(sp)
+            addi sp sp 4
 
             # Continue iterating
             addi t0 t0 -1
