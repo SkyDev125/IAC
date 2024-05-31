@@ -24,16 +24,16 @@
 .data
 
 #Input A - linha inclinada
-#n_points:    .word 9
-#points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
+n_points:    .word 9
+points:      .word 0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7 8,8
 
 #Input B - Cruz
 #n_points:    .word 5
 #points:     .word 4,2, 5,1, 5,2, 5,3 6,2
 
 #Input C
-n_points:    .word 23
-points: .word 0,0, 0,1, 0,2, 1,0, 1,1, 1,2, 1,3, 2,0, 2,1, 5,3, 6,2, 6,3, 6,4, 7,2, 7,3, 6,8, 6,9, 7,8, 8,7, 8,8, 8,9, 9,7, 9,8
+#n_points:    .word 23
+#points: .word 0,0, 0,1, 0,2, 1,0, 1,1, 1,2, 1,3, 2,0, 2,1, 5,3, 6,2, 6,3, 6,4, 7,2, 7,3, 6,8, 6,9, 7,8, 8,7, 8,8, 8,9, 9,7, 9,8
 
 #Input D
 #n_points:    .word 30
@@ -100,11 +100,11 @@ printPoint:
 #OPTIMIZATION
 #
 # We optimized our initial design, which printed each point from 
-# 0,0 to 31,31 using the printPoint Function, to using consecutive memory addresses 
-# for faster screen cleaning. 
+# 0,0 to 31,31 using the printPoint Function, to 
+# using consecutive memory addresses for faster screen cleaning. 
 #
-# We considered further optimization by tracking printed points for efficient clearing, 
-# but found our current method faster for larger data sets.
+# We considered further optimization by tracking printed points
+# for efficient clearing, but found our current method faster for larger data sets.
 #
 # Argumentos: nenhum
 # Retorno: nenhum
@@ -225,10 +225,11 @@ printCentroids:
 #
 #OPTIMIZATION
 #
-# We optimized our k-means algorithm by dynamically allocating space for each centroid
-# calculation on the stack. This allows our code to be flexible and efficient,
-# running through the points vector only once, instead of n*K times. This approach is
-# most effective except for very small K values.
+# We optimized our k-means algorithm by dynamically allocating 
+# space for each centroid calculation on the stack. This 
+# allows our code to be flexible and efficient, running 
+# through the points vector only once, instead of n*K times. 
+# This approach is most effective except for very small K values.
 #
 # Argumentos: nenhum
 # Retorno: nenhum
@@ -589,7 +590,8 @@ mainKMeans:
 
             # Continue iterating
             addi t0 t0 -1
-        j mk_loop
+        # Place breakpoint here to see each iteration
+        j mk_loop 
     mk_continue:
 
     # Recover ra from stack
@@ -601,6 +603,15 @@ mainKMeans:
 
 ### initializeCentroids
 # Pseudo-Aleatoriamente seleciona pontos para centroids
+#
+# This implementation may generate overlapping points if 
+# the time interval between point generations is too short 
+# due to the deterministic nature of the pseudo-random number
+# generator. We considered this behavior acceptable for this 
+# implementation, as it introduces unique scenarios that can 
+# test the robustness of the k-means algorithm and its 
+# ability to handle overlapping points.
+#
 # Argumentos: nenhum
 # Retorno: nenhum
 initializeCentroids:
@@ -646,9 +657,11 @@ initializeCentroids:
 ### generateCentroid
 # Randomly selects a centroid
 #
-# Design: We started by using the points given to help generate the seed for the algorithm
-# however, it seemed to not be random enough, and less efficient. So we changed to a more 
-# standard approach which seemed to provide better results.
+# Design: We started by using the points given to help 
+# generate the seed for the algorithm however, it seemed 
+# to not be random enough, and less efficient. So 
+# we changed to a more standard approach which seemed to 
+# provide better results.
 #
 # https://en.wikipedia.org/wiki/Linear_congruential_generator
 #
